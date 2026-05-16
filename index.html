@@ -695,11 +695,10 @@ function saveLocal(){ localStorage.setItem('pv-debts',JSON.stringify(debts)); }
 function loadLocal(){ try{const s=localStorage.getItem('pv-debts');return s?JSON.parse(s):null;}catch{return null;} }
 
 async function loadDebts(){
-  // Always load from localStorage first (instant)
   const local=loadLocal();
-  if(local&&local.length>0){ debts=local; updateTotal(); }
-  else { debts=getSample(); saveLocal(); updateTotal(); }
-  // Then try to sync from Sheets in background
+  if(local&&local.length>0){
+    debts=local; updateTotal(); renderTab(); 
+  }
   if(SCRIPT_URL){
     try{
       const r=await fetch(SCRIPT_URL+'?action=getAll');
@@ -707,7 +706,10 @@ async function loadDebts(){
       if(Array.isArray(remote)&&remote.length>0){
         debts=remote; saveLocal(); updateTotal(); renderTab();
       }
-    }catch(e){ /* localStorage veriyi kullan */ }
+    }catch(e){}
+  }
+  if(!debts||debts.length===0){
+    debts=getSample(); updateTotal(); renderTab();
   }
 }
 
