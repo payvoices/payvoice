@@ -255,6 +255,41 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   border-top:1px solid var(--border);border-radius:18px 18px 0 0;
   padding:20px 18px 32px;animation:slideUp .3s cubic-bezier(.34,1.56,.64,1)}
 
+/* ── SCROLL FIX ── */
+.tl-cred{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.tl-amt{flex-shrink:0;white-space:nowrap}
+.tl-meta{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.tl-meta::-webkit-scrollbar{height:0}
+.tl-note{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cal-grid{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.cal-dot-txt{max-width:32px;overflow:hidden;text-overflow:ellipsis}
+
+/* ── CONFIRM MODAL ── */
+#confirm-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;display:none;
+  align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+#confirm-bg.open{display:flex}
+#confirm-modal{width:100%;max-width:340px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:16px;padding:24px 20px;
+  animation:fadeUp .2s ease}
+.confirm-icon{font-size:32px;text-align:center;margin-bottom:10px}
+.confirm-title{font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--text);text-align:center;margin-bottom:6px}
+.confirm-sub{font-size:12px;color:var(--sub);text-align:center;margin-bottom:18px;line-height:1.5}
+.confirm-acts{display:flex;gap:8px}
+.confirm-no{flex:1;padding:10px;background:transparent;border:1px solid var(--border);
+  border-radius:8px;color:var(--sub);font-size:13px;font-weight:700}
+.confirm-yes{flex:1;padding:10px;background:rgba(74,171,122,0.1);border:1px solid rgba(74,171,122,0.3);
+  border-radius:8px;color:var(--ok);font-size:13px;font-weight:800}
+.confirm-del{flex:1;padding:10px;background:rgba(224,82,82,0.08);border:1px solid rgba(224,82,82,0.25);
+  border-radius:8px;color:var(--danger);font-size:13px;font-weight:800}
+
+/* ── EDIT MODAL ── */
+#edit-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:150;display:none;
+  align-items:flex-end;backdrop-filter:blur(4px)}
+#edit-bg.open{display:flex}
+#edit-modal{width:100%;max-width:480px;margin:0 auto;background:var(--surface2);
+  border-top:1px solid var(--border);border-radius:18px 18px 0 0;
+  padding:20px 18px 32px;animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);max-height:90vh;overflow-y:auto}
+
 /* ── TOAST ── */
 #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);
   padding:8px 16px;border-radius:7px;color:#fff;font-size:12px;font-weight:800;
@@ -347,6 +382,59 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   </div>
 </div>
 
+<!-- ═══ CONFIRM MODAL ═══ -->
+<div id="confirm-bg">
+  <div id="confirm-modal">
+    <div class="confirm-icon" id="confirm-icon">✓</div>
+    <div class="confirm-title" id="confirm-title"></div>
+    <div class="confirm-sub" id="confirm-sub"></div>
+    <div class="confirm-acts" id="confirm-acts"></div>
+  </div>
+</div>
+
+<!-- ═══ EDIT MODAL ═══ -->
+<div id="edit-bg">
+  <div id="edit-modal">
+    <div class="modal-title">Düzenle</div>
+    <div class="f-row">
+      <label class="f-lbl">Tür</label>
+      <select class="f-sel" id="e-type" onchange="onEditTypeChange()">
+        <option value="credit_card">💳 Kredi Kartı</option>
+        <option value="cash">💵 Nakit</option>
+        <option value="installment">📦 Taksit</option>
+        <option value="bill">🧾 Fatura</option>
+        <option value="personal">🤝 Kişisel</option>
+      </select>
+    </div>
+    <div class="f-row">
+      <label class="f-lbl">Alacaklı / Kişi</label>
+      <input class="f-inp" id="e-cred"/>
+    </div>
+    <div class="f-row-2">
+      <div><label class="f-lbl">Tutar</label><input class="f-inp" id="e-amt" type="number"/></div>
+      <div><label class="f-lbl">Para Birimi</label>
+        <select class="f-sel" id="e-cur">
+          <option value="₺">₺ TRY</option><option value="$">$ USD</option>
+          <option value="€">€ EUR</option><option value="£">£ GBP</option>
+        </select>
+      </div>
+    </div>
+    <div class="f-row-2">
+      <div><label class="f-lbl">Vade Tarihi</label><input class="f-inp" id="e-due" type="date"/></div>
+      <div><label class="f-lbl">⏰ Bildirim Saati</label><input class="f-inp" id="e-time" type="time" value="09:00"/></div>
+    </div>
+    <div class="f-row-2" id="edit-inst-row" style="display:none">
+      <div><label class="f-lbl">Toplam Taksit</label><input class="f-inp" id="e-ti" type="number"/></div>
+      <div><label class="f-lbl">Kalan</label><input class="f-inp" id="e-ri" type="number"/></div>
+    </div>
+    <div class="f-row"><label class="f-lbl">Not</label><input class="f-inp" id="e-note"/></div>
+    <div class="m-acts">
+      <button class="btn-cancel" onclick="closeEdit()">İptal</button>
+      <button class="btn-save" onclick="saveEdit()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ ADD DEBT MODAL ═══ -->
 <div id="add-bg">
   <div id="add-modal">
@@ -374,7 +462,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
         </select>
       </div>
     </div>
-    <div class="f-row"><label class="f-lbl" id="a-lbl-due">Vade Tarihi</label><input class="f-inp" id="a-due" type="date"/></div>
+    <div class="f-row-2"><div><label class="f-lbl" id="a-lbl-due">Vade Tarihi</label><input class="f-inp" id="a-due" type="date"/></div><div><label class="f-lbl">23f0 Saat</label><input class="f-inp" id="a-time" type="time" value="09:00"/></div></div>
     <div class="f-row-2" id="inst-row" style="display:none">
       <div><label class="f-lbl" id="a-lbl-ti">Toplam Taksit</label><input class="f-inp" id="a-ti" type="number" placeholder="12"/></div>
       <div><label class="f-lbl" id="a-lbl-ri">Kalan</label><input class="f-inp" id="a-ri" type="number" placeholder="7"/></div>
@@ -556,6 +644,7 @@ async function init(){
     document.getElementById('setup-screen').classList.add('hidden');
     await loadDebts();
     applyLang();
+    scheduleAllNotifs();
   }
 }
 
@@ -695,10 +784,11 @@ function saveLocal(){ localStorage.setItem('pv-debts',JSON.stringify(debts)); }
 function loadLocal(){ try{const s=localStorage.getItem('pv-debts');return s?JSON.parse(s):null;}catch{return null;} }
 
 async function loadDebts(){
+  // Always load from localStorage first (instant)
   const local=loadLocal();
-  if(local&&local.length>0){
-    debts=local; updateTotal(); renderTab(); 
-  }
+  if(local&&local.length>0){ debts=local; updateTotal(); }
+  else { debts=getSample(); saveLocal(); updateTotal(); }
+  // Then try to sync from Sheets in background
   if(SCRIPT_URL){
     try{
       const r=await fetch(SCRIPT_URL+'?action=getAll');
@@ -706,10 +796,7 @@ async function loadDebts(){
       if(Array.isArray(remote)&&remote.length>0){
         debts=remote; saveLocal(); updateTotal(); renderTab();
       }
-    }catch(e){}
-  }
-  if(!debts||debts.length===0){
-    debts=getSample(); updateTotal(); renderTab();
+    }catch(e){ /* localStorage veriyi kullan */ }
   }
 }
 
@@ -726,18 +813,53 @@ async function addDebt(d){
   await apiPost({action:'add',debt:d});
   scheduleNotif(d);
 }
-async function markPaid(id){
-  debts=debts.map(d=>d.id===id?{...d,paid:true}:d);
-  saveLocal(); updateTotal(); renderTab();
-  showToast(t('t_paid'),'ok');
-  await apiPost({action:'paid',id});
+
+function markPaid(id){
+  const d=debts.find(x=>x.id===id); if(!d)return;
+  showConfirm({
+    icon:'✓',
+    title:lang==='tr'?'Ödendi mi?':'Mark as paid?',
+    sub:esc(d.creditor)+' — '+fmt(d.amount,d.currency),
+    yesLabel:lang==='tr'?'Evet, Ödendi':'Yes, Paid',
+    yesClass:'confirm-yes',
+    onYes:async()=>{
+      debts=debts.map(x=>x.id===id?{...x,paid:true}:x);
+      saveLocal(); updateTotal(); renderTab();
+      showToast(t('t_paid'),'ok');
+      await apiPost({action:'paid',id});
+    }
+  });
 }
-async function deleteDebt(id){
-  debts=debts.filter(d=>d.id!==id);
-  saveLocal(); updateTotal(); renderTab();
-  showToast(t('t_del'),'info');
-  await apiPost({action:'delete',id});
+
+function deleteDebt(id){
+  const d=debts.find(x=>x.id===id); if(!d)return;
+  showConfirm({
+    icon:'🗑',
+    title:lang==='tr'?'Silinsin mi?':'Delete?',
+    sub:esc(d.creditor)+' — '+fmt(d.amount,d.currency),
+    yesLabel:lang==='tr'?'Sil':'Delete',
+    yesClass:'confirm-del',
+    onYes:async()=>{
+      debts=debts.filter(x=>x.id!==id);
+      saveLocal(); updateTotal(); renderTab();
+      showToast(t('t_del'),'info');
+      await apiPost({action:'delete',id});
+    }
+  });
 }
+
+function showConfirm({icon,title,sub,yesLabel,yesClass,onYes}){
+  document.getElementById('confirm-icon').textContent=icon;
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-sub').textContent=sub;
+  document.getElementById('confirm-acts').innerHTML=
+    '<button class="confirm-no" onclick="closeConfirm()">'+(lang==='tr'?'İptal':'Cancel')+'</button>'+
+    '<button class="'+yesClass+'" onclick="confirmYes()">'+yesLabel+'</button>';
+  window._confirmYesFn=onYes;
+  document.getElementById('confirm-bg').classList.add('open');
+}
+function closeConfirm(){document.getElementById('confirm-bg').classList.remove('open');window._confirmYesFn=null;}
+async function confirmYes(){closeConfirm();if(window._confirmYesFn)await window._confirmYesFn();}
 
 // ══════════════════════════════════════════
 //  VOICE
@@ -803,17 +925,17 @@ async function parseVoice(text){
   document.getElementById('status-msg').textContent=t('status_process');
   const today=todayStr(), eom=eomStr();
   try{
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${API_KEY}`,{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        contents:[{parts:[{text:t('voice_q').replace('{T}',text).replace('{D}',today).replace('{E}',eom)}]}],
-        systemInstruction:{parts:[{text:t('voice_sys')}]}
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,
+        system:t('voice_sys'),
+        messages:[{role:'user',content:t('voice_q').replace('{T}',text).replace('{D}',today).replace('{E}',eom)}]
       })
     });
-    if(!res.ok){const err=await res.json();throw new Error(err.error?.message||res.status);}
+    if(!res.ok){ const err=await res.json(); throw new Error(err.error?.message||res.status); }
     const data=await res.json();
-    const raw=(data.candidates?.[0]?.content?.parts?.[0]?.text||'').replace(/```json|```/g,'').trim();
+    const raw=(data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(raw);
     const debt={id:String(Date.now()),...parsed,paid:false,createdAt:today};
     await addDebt(debt);
@@ -827,6 +949,7 @@ async function parseVoice(text){
     document.getElementById('status-msg').textContent=t('status_idle');
     showExs();
     showToast(t('t_err')+': '+e.message,'error');
+    console.error('Voice parse error:',e);
   }
 }
 
@@ -888,13 +1011,14 @@ function renderDebts(){
           <div class="tl-amt">${fmt(d.amount,d.currency)}</div>
         </div>
         <div class="tl-meta">
-          <span>📅 ${d.dueDate}</span>
+          <span>📅 ${d.dueDate}${d.dueTime?' ⏰ '+d.dueTime:''}</span>
           ${d.recurring?`<span>${l.recur}</span>`:''}
           ${d.remainingInstallments?`<span>📦 ${d.remainingInstallments}/${d.totalInstallments} ${l.inst_lbl}</span>`:''}
         </div>
         ${d.note?`<div class="tl-note">${esc(d.note)}</div>`:''}
         <div class="tl-acts">
           <button class="btn-paid" onclick="markPaid('${d.id}')">${l.btn_paid}</button>
+          <button class="btn-del" style="padding:6px 8px;font-size:12px" onclick="openEdit('${d.id}')">✏️</button>
           <button class="btn-del" onclick="deleteDebt('${d.id}')">${l.btn_del}</button>
         </div>
       </div>
@@ -956,9 +1080,12 @@ function renderCalendar(){
     dd.forEach(d=>{
       const ti=TYPE_VALS.indexOf(d.type);
       const col=urgCol(daysUntil(d.dueDate));
-      h+=`<div class="cal-detail-row">
-        <span>${ti>=0?l.type_icon[ti]:'💰'} ${esc(d.creditor)}</span>
-        <span style="color:${col};font-family:var(--font-d);font-weight:700">${fmt(d.amount,d.currency)}</span>
+      h+=`<div class="cal-detail-row" onclick="openEdit('${d.id}')" style="cursor:pointer">
+        <span>${ti>=0?l.type_icon[ti]:'💰'} ${esc(d.creditor)}${d.dueTime?' ⏰'+d.dueTime:''}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:${col};font-family:var(--font-d);font-weight:700">${fmt(d.amount,d.currency)}</span>
+          <span style="font-size:10px;color:var(--sub)">✏️</span>
+        </div>
       </div>`;
     });
     h+='</div>';
@@ -998,17 +1125,17 @@ async function getSuggestions(){
     .map(d=>`• ${d.type}|${d.creditor}|${fmt(d.amount,d.currency)}|${d.dueDate}|${daysUntil(d.dueDate)}d${d.remainingInstallments?`|${d.remainingInstallments}/${d.totalInstallments} inst`:''}`)
     .join('\n');
   try{
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${API_KEY}`,{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        contents:[{parts:[{text:t('sug_q').replace('{D}',summary)}]}],
-        systemInstruction:{parts:[{text:t('sug_sys')}]}
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,
+        system:t('sug_sys'),
+        messages:[{role:'user',content:t('sug_q').replace('{D}',summary)}]
       })
     });
     if(!res.ok) throw new Error(res.status);
     const data=await res.json();
-    suggestions=data.candidates?.[0]?.content?.parts?.[0]?.text||'Error';
+    suggestions=data.content?.[0]?.text||'Error';
   }catch(e){ suggestions=lang==='tr'?'Bağlantı hatası: '+e.message:'Connection error: '+e.message; }
   renderTab();
 }
@@ -1033,15 +1160,58 @@ async function saveManual(){
   const debt={id:String(Date.now()),
     type:document.getElementById('a-type').value,
     creditor,amount,currency:document.getElementById('a-cur').value,
-    dueDate,recurring:false,
+    dueDate,dueTime:document.getElementById('a-time').value||'09:00',
+    recurring:false,
     totalInstallments:document.getElementById('a-ti').value||null,
     remainingInstallments:document.getElementById('a-ri').value||null,
     note:document.getElementById('a-note').value||'',
     paid:false,createdAt:todayStr()};
   await addDebt(debt);
   closeAdd(); showToast(t('t_added'),'ok');
-  // clear form
   ['a-cred','a-amt','a-note','a-ti','a-ri'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ── EDIT ──
+function openEdit(id){
+  const d=debts.find(x=>x.id===id); if(!d)return;
+  window._editId=id;
+  const sel=document.getElementById('e-type');
+  [...sel.options].forEach((o,i)=>{o.textContent=L[lang].opt[i];});
+  document.getElementById('e-type').value=d.type||'credit_card';
+  document.getElementById('e-cred').value=d.creditor||'';
+  document.getElementById('e-amt').value=d.amount||'';
+  document.getElementById('e-cur').value=d.currency||'₺';
+  document.getElementById('e-due').value=d.dueDate||todayStr();
+  document.getElementById('e-time').value=d.dueTime||'09:00';
+  document.getElementById('e-ti').value=d.totalInstallments||'';
+  document.getElementById('e-ri').value=d.remainingInstallments||'';
+  document.getElementById('e-note').value=d.note||'';
+  document.getElementById('edit-inst-row').style.display=d.type==='installment'?'grid':'none';
+  document.getElementById('edit-bg').classList.add('open');
+}
+function closeEdit(){document.getElementById('edit-bg').classList.remove('open');window._editId=null;}
+function onEditTypeChange(){
+  document.getElementById('edit-inst-row').style.display=
+    document.getElementById('e-type').value==='installment'?'grid':'none';
+}
+async function saveEdit(){
+  const id=window._editId; if(!id)return;
+  const creditor=document.getElementById('e-cred').value.trim();
+  const amount=parseFloat(document.getElementById('e-amt').value);
+  const dueDate=document.getElementById('e-due').value;
+  if(!creditor||!amount||!dueDate){showToast(t('t_fill'),'error');return;}
+  debts=debts.map(d=>d.id===id?{...d,
+    type:document.getElementById('e-type').value,
+    creditor,amount,currency:document.getElementById('e-cur').value,
+    dueDate,dueTime:document.getElementById('e-time').value||'09:00',
+    totalInstallments:document.getElementById('e-ti').value||null,
+    remainingInstallments:document.getElementById('e-ri').value||null,
+    note:document.getElementById('e-note').value||''
+  }:d);
+  saveLocal(); updateTotal(); renderTab();
+  closeEdit();
+  showToast(lang==='tr'?'Güncellendi!':'Updated!','ok');
+  await apiPost({action:'add',debt:debts.find(x=>x.id===id)});
 }
 
 // ══════════════════════════════════════════
@@ -1050,12 +1220,33 @@ async function saveManual(){
 function scheduleNotif(debt){
   if(Notification.permission!=='granted') return;
   const days=daysUntil(debt.dueDate);
+  // Immediate notif for 1 day / 1 week away
   if(days===1||days===7){
     new Notification('Payvoice ⚡',{
-      body:`${debt.creditor} — ${fmt(debt.amount,debt.currency)} ${days===1?lang==='tr'?'yarın!':'tomorrow!':lang==='tr'?'1 hafta kaldı':'in 1 week'}`,
+      body:debt.creditor+' — '+fmt(debt.amount,debt.currency)+' '+(days===1?(lang==='tr'?'yarın!':'tomorrow!'):(lang==='tr'?'1 hafta kaldı':'in 1 week')),
       icon:'icon-192.png'
     });
   }
+  // Timed notif: on the due date at specified time
+  if(days===0 && debt.dueTime){
+    const [h,m]=debt.dueTime.split(':').map(Number);
+    const now=new Date();
+    const notifTime=new Date();
+    notifTime.setHours(h,m,0,0);
+    const delay=notifTime-now;
+    if(delay>0){
+      setTimeout(()=>{
+        new Notification('Payvoice — '+( lang==='tr'?'Bugün öde!':'Pay today!'),{
+          body:debt.creditor+' — '+fmt(debt.amount,debt.currency)+' @ '+debt.dueTime,
+          icon:'icon-192.png'
+        });
+      },delay);
+    }
+  }
+}
+
+function scheduleAllNotifs(){
+  debts.filter(d=>!d.paid).forEach(d=>scheduleNotif(d));
 }
 
 // ══════════════════════════════════════════
