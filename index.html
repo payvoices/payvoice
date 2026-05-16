@@ -801,17 +801,17 @@ async function parseVoice(text){
   document.getElementById('status-msg').textContent=t('status_process');
   const today=todayStr(), eom=eomStr();
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${API_KEY}`,{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,
-        system:t('voice_sys'),
-        messages:[{role:'user',content:t('voice_q').replace('{T}',text).replace('{D}',today).replace('{E}',eom)}]
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[{parts:[{text:t('voice_q').replace('{T}',text).replace('{D}',today).replace('{E}',eom)}]}],
+        systemInstruction:{parts:[{text:t('voice_sys')}]}
       })
     });
-    if(!res.ok){ const err=await res.json(); throw new Error(err.error?.message||res.status); }
+    if(!res.ok){const err=await res.json();throw new Error(err.error?.message||res.status);}
     const data=await res.json();
-    const raw=(data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+    const raw=(data.candidates?.[0]?.content?.parts?.[0]?.text||'').replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(raw);
     const debt={id:String(Date.now()),...parsed,paid:false,createdAt:today};
     await addDebt(debt);
@@ -825,7 +825,6 @@ async function parseVoice(text){
     document.getElementById('status-msg').textContent=t('status_idle');
     showExs();
     showToast(t('t_err')+': '+e.message,'error');
-    console.error('Voice parse error:',e);
   }
 }
 
@@ -997,17 +996,17 @@ async function getSuggestions(){
     .map(d=>`• ${d.type}|${d.creditor}|${fmt(d.amount,d.currency)}|${d.dueDate}|${daysUntil(d.dueDate)}d${d.remainingInstallments?`|${d.remainingInstallments}/${d.totalInstallments} inst`:''}`)
     .join('\n');
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${API_KEY}`,{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,
-        system:t('sug_sys'),
-        messages:[{role:'user',content:t('sug_q').replace('{D}',summary)}]
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[{parts:[{text:t('sug_q').replace('{D}',summary)}]}],
+        systemInstruction:{parts:[{text:t('sug_sys')}]}
       })
     });
     if(!res.ok) throw new Error(res.status);
     const data=await res.json();
-    suggestions=data.content?.[0]?.text||'Error';
+    suggestions=data.candidates?.[0]?.content?.parts?.[0]?.text||'Error';
   }catch(e){ suggestions=lang==='tr'?'Bağlantı hatası: '+e.message:'Connection error: '+e.message; }
   renderTab();
 }
