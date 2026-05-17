@@ -805,31 +805,71 @@ async function apiPost(body){
 async function loadDebts(){
   const deleted = getDeletedIds();
 
-  // Önce localStorage göster
-  const local = loadLocal();
-  if(local.length>0){
+  if(!SCRIPT_URL) {
+    // URL yoksa localStorage kullan
+    const local = loadLocal();
     debts = local.filter(d=>!deleted.includes(String(d.id)));
-    updateTotal(); renderTab();
-  } else {
-    debts=[]; updateTotal(); renderTab();
+    updateTotal(); 
+    renderTab();
+    return;
   }
-
-  // Sheets'ten çek - PhoneTrack gibi action body'de
-  if(!SCRIPT_URL) return;
+  
   try{
+    // Önce loading state
+    document.getElementById('content').innerHTML = '<div class="empty">Yükleniyor...</div>';
+    
     const r = await fetch(SCRIPT_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({action:'getAll'})
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'getAll'})
     });
+    
     const res = await r.json();
+    console.log('API Yanıtı:', res); // DEBUG
+    
     if(res.ok && Array.isArray(res.data)){
-      const filtered = res.data.filter(d=>!deleted.includes(String(d.id)));
-      debts = filtered;
+      // Verileri temizle ve dönüştür
+      debts = res.data
+        .filter(d => !deleted.includes(String(d.id)))
+        .map(d => ({
+          id: String(d.id || ''),
+          type: d.type || d.Type || 'personal',  // Büyük/küçük harf uyumu
+          creditor: d.creditor || d.Creditor || '?',
+          amount: Number(d.amount || d.Amount || 0),
+          currency: d.currency || d.Currency || '₺',
+          dueDate: d.dueDate || d.DueDate || '',
+          dueTime: d.dueTime || d.DueTime || '09:00',
+          recurring: d.recurring === true || d.recurring === 'TRUE' || d.Recurring === true || d.Recurring === 'TRUE',
+          totalInstallments: Number(d.totalInstallments || d.TotalInstallments || 0) || null,
+          remainingInstallments: Number(d.remainingInstallments || d.RemainingInstallments || 0) || null,
+          note: d.note || d.Note || '',
+          paid: d.paid === true || d.paid === 'TRUE' || d.Paid === true || d.Paid === 'TRUE',
+          createdAt: d.createdAt || d.CreatedAt || '',
+          calendarEventId: d.calendarEventId || d.CalendarEventId || ''
+        }));
+      
       saveLocal();
-      updateTotal(); renderTab();
+      updateTotal();
+      renderTab();
+      scheduleAllNotifs();
+      console.log('Yüklenen borçlar:', debts); // DEBUG
+    } else {
+      console.error('API hatası:', res);
+      // localStorage'a düş
+      const local = loadLocal();
+      debts = local.filter(d=>!deleted.includes(String(d.id)));
+      updateTotal();
+      renderTab();
     }
-  }catch(e){ /* localStorage kullan */ }
+  } catch(e){
+    console.error('Bağlantı hatası:', e);
+    // localStorage'a düş
+    const local = loadLocal();
+    debts = local.filter(d=>!deleted.includes(String(d.id)));
+    updateTotal();
+    renderTab();
+    showToast('Bağlantı hatası, yerel veriler gösteriliyor', 'error');
+  }
 }
 
 async function addDebt(d){
