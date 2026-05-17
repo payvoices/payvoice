@@ -780,51 +780,58 @@ function updateConnStatus(){
 // ══════════════════════════════════════════
 //  DATA — localStorage + Sheets
 // ══════════════════════════════════════════
+// ── LOCAL STORAGE ──
 function saveLocal(){ localStorage.setItem('pv-debts',JSON.stringify(debts)); }
-function loadLocal(){ try{const s=localStorage.getItem('pv-debts');return s?JSON.parse(s):null;}catch{return null;} }
+function loadLocal(){ try{const s=localStorage.getItem('pv-debts');return s?JSON.parse(s):[];}catch{return[];} }
 function isSampleData(arr){ return arr&&arr.length>0&&arr.every(d=>d.id==='s1'||d.id==='s2'); }
 
+// Silinen ID'leri tut - Sheets'ten gelse bile gösterme
+function getDeletedIds(){ try{return JSON.parse(localStorage.getItem('pv-deleted')||'[]');}catch{return[];} }
+function addDeletedId(id){ const ids=getDeletedIds(); if(!ids.includes(id)){ids.push(id);localStorage.setItem('pv-deleted',JSON.stringify(ids));} }
+function removeDeletedId(id){ localStorage.setItem('pv-deleted',JSON.stringify(getDeletedIds().filter(x=>x!==id))); }
+
 async function loadDebts(){
-  if(SCRIPT_URL){
-    // Önce localStorage'dan anlık göster
-    const local=loadLocal();
-    if(local&&local.length>0&&!isSampleData(local)){
-      debts=local; updateTotal(); renderTab();
-    } else {
-      debts=[]; updateTotal(); renderTab();
-    }
-    // Sheets'ten çek ve güncelle
-    try{
-      const r=await fetch(SCRIPT_URL+'?action=getAll');
-      const remote=await r.json();
-      if(Array.isArray(remote)){
-        debts=remote;
-        saveLocal();
-        updateTotal();
-        renderTab(); // Her durumda render et
-      }
-    }catch(e){ showToast(t('t_sync'),'error'); }
+  const deleted = getDeletedIds();
+
+  // 1. Önce localStorage'dan göster (anlık)
+  const local = loadLocal();
+  if(local.length>0 && !isSampleData(local)){
+    debts = local.filter(d=>!deleted.includes(d.id));
+    updateTotal(); renderTab();
   } else {
-    const local=loadLocal();
-    if(local&&local.length>0&&!isSampleData(local)){
-      debts=local; updateTotal(); renderTab();
-    } else {
-      debts=[]; saveLocal(); updateTotal(); renderTab();
-    }
+    debts = []; updateTotal(); renderTab();
   }
+
+  // 2. Sheets varsa arka planda çek
+  if(!SCRIPT_URL) return;
+  try{
+    const r = await fetch(SCRIPT_URL+'?action=getAll');
+    const remote = await r.json();
+    if(!Array.isArray(remote)) return;
+    // Silinen ID'leri filtrele
+    const filtered = remote.filter(d=>!deleted.includes(String(d.id)));
+    // Sadece Sheets'te daha fazla veri varsa güncelle
+    // Yoksa localStorage'ı koru (yazma gecikmesi olabilir)
+    if(filtered.length >= debts.length){
+      debts = filtered;
+      saveLocal();
+      updateTotal(); renderTab();
+    }
+  }catch(e){ /* localStorage verisi kullanılıyor */ }
 }
 
 async function apiPost(body){
   if(!SCRIPT_URL) return null;
   try{
-    // GET ile gonderiyoruz - CORS sorunu olmaz
-    const params = new URLSearchParams({
-      action: body.action,
-      payload: JSON.stringify(body)
+    // no-cors ile POST — Apps Script alıyor, CORS hatası yok
+    await fetch(SCRIPT_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(body)
     });
-    const r = await fetch(SCRIPT_URL + '?' + params.toString());
-    return await r.json();
-  }catch(e){ showToast(t('t_sync'),'error'); return null; }
+    return {success:true};
+  }catch(e){ return null; }
 }
 
 async function addDebt(d){
@@ -859,6 +866,8 @@ function deleteDebt(id){
     yesLabel:lang==='tr'?'Sil':'Delete',
     yesClass:'confirm-del',
     onYes:async()=>{
+      // Önce silinmiş olarak işaretle - Sheets'ten gelse bile gösterme
+      addDeletedId(String(id));
       debts=debts.filter(x=>x.id!==id);
       saveLocal(); updateTotal(); renderTab();
       showToast(t('t_del'),'info');
