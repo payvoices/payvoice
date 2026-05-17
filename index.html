@@ -668,7 +668,7 @@ function saveSetup(){
 }
 function skipSetup(){
   document.getElementById('setup-screen').classList.add('hidden');
-  debts = getSample();
+  debts = [];
   saveLocal();
   applyLang();
 }
@@ -782,30 +782,44 @@ function updateConnStatus(){
 // ══════════════════════════════════════════
 function saveLocal(){ localStorage.setItem('pv-debts',JSON.stringify(debts)); }
 function loadLocal(){ try{const s=localStorage.getItem('pv-debts');return s?JSON.parse(s):null;}catch{return null;} }
+function isSampleData(arr){ return arr&&arr.length>0&&arr.every(d=>d.id==='s1'||d.id==='s2'); }
 
 async function loadDebts(){
-  // Always load from localStorage first (instant)
-  const local=loadLocal();
-  if(local&&local.length>0){ debts=local; updateTotal(); }
-  else { debts=getSample(); saveLocal(); updateTotal(); }
-  // Then try to sync from Sheets in background
   if(SCRIPT_URL){
+    // Sheets varsa orası kaynak gerçek, önce localStorage göster sonra Sheets'ten al
+    const local=loadLocal();
+    if(local&&local.length>0&&!isSampleData(local)){
+      debts=local; updateTotal(); renderTab();
+    }
     try{
       const r=await fetch(SCRIPT_URL+'?action=getAll');
       const remote=await r.json();
-      if(Array.isArray(remote)&&remote.length>0){
+      if(Array.isArray(remote)){
         debts=remote; saveLocal(); updateTotal(); renderTab();
       }
-    }catch(e){ /* localStorage veriyi kullan */ }
+    }catch(e){ showToast(t('t_sync'),'error'); }
+  } else {
+    // Sheets yok, sadece localStorage
+    const local=loadLocal();
+    if(local&&local.length>0&&!isSampleData(local)){
+      debts=local; updateTotal();
+    } else {
+      // Hiç veri yok, boş başla - demo gösterme
+      debts=[]; saveLocal(); updateTotal();
+    }
   }
 }
 
 async function apiPost(body){
   if(!SCRIPT_URL) return;
   try{
-    await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  }catch{ showToast(t('t_sync'),'error'); }
+    const r=await fetch(SCRIPT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    return await r.json();
+  }catch(e){ showToast(t('t_sync'),'error'); return null; }
 }
 
 async function addDebt(d){
