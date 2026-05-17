@@ -795,8 +795,11 @@ async function loadDebts(){
       const r=await fetch(SCRIPT_URL+'?action=getAll');
       const remote=await r.json();
       if(Array.isArray(remote)){
-        debts=remote; saveLocal(); updateTotal(); renderTab();
-      }
+  // Sheets boş geliyorsa localStorage'ı koru
+  if(remote.length>0){
+    debts=remote; saveLocal(); updateTotal(); renderTab();
+  }
+}
     }catch(e){ showToast(t('t_sync'),'error'); }
   } else {
     // Sheets yok, sadece localStorage
@@ -811,17 +814,19 @@ async function loadDebts(){
 }
 
 async function apiPost(body){
-  if(!SCRIPT_URL) return;
+  if(!SCRIPT_URL) return null;
   try{
-    const r=await fetch(SCRIPT_URL,{
+    // Apps Script CORS desteklemiyor, no-cors kullanıyoruz
+    // Sadece write işlemleri için, read her zaman GET ile yapılıyor
+    await fetch(SCRIPT_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
       body:JSON.stringify(body)
     });
-    return await r.json();
+    return true;
   }catch(e){ showToast(t('t_sync'),'error'); return null; }
 }
-
 async function addDebt(d){
   debts.push(d); saveLocal(); updateTotal(); renderTab();
   await apiPost({action:'add',debt:d});
