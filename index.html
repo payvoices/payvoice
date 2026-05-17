@@ -792,11 +792,12 @@ async function apiPost(body){
   try{
     const r = await fetch(SCRIPT_URL, {
       method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      headers:{'Content-Type':'application/json'},  // ← DÜZELTİLDİ
       body: JSON.stringify(body)
     });
     return await r.json();
   }catch(e){
+    console.error('API post error:', e);
     showToast(t('t_sync'),'error');
     return null;
   }
@@ -806,7 +807,6 @@ async function loadDebts(){
   const deleted = getDeletedIds();
 
   if(!SCRIPT_URL) {
-    // URL yoksa localStorage kullan
     const local = loadLocal();
     debts = local.filter(d=>!deleted.includes(String(d.id)));
     updateTotal(); 
@@ -815,60 +815,53 @@ async function loadDebts(){
   }
   
   try{
-    // Önce loading state
-    document.getElementById('content').innerHTML = '<div class="empty">Yükleniyor...</div>';
+    // loadDebts içindeki fetch'i bul ve headers'ı değiştir:
+const r = await fetch(SCRIPT_URL, {
+  method:'POST',
+  headers:{'Content-Type':'application/json'},  // ← DÜZELT
+  body: JSON.stringify({action:'getAll'})
+});
     
-    const r = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: 'getAll'})
-    });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
     
     const res = await r.json();
-    console.log('API Yanıtı:', res); // DEBUG
     
     if(res.ok && Array.isArray(res.data)){
-      // Verileri temizle ve dönüştür
       debts = res.data
         .filter(d => !deleted.includes(String(d.id)))
         .map(d => ({
           id: String(d.id || ''),
-          type: d.type || d.Type || 'personal',  // Büyük/küçük harf uyumu
-          creditor: d.creditor || d.Creditor || '?',
-          amount: Number(d.amount || d.Amount || 0),
-          currency: d.currency || d.Currency || '₺',
-          dueDate: d.dueDate || d.DueDate || '',
-          dueTime: d.dueTime || d.DueTime || '09:00',
-          recurring: d.recurring === true || d.recurring === 'TRUE' || d.Recurring === true || d.Recurring === 'TRUE',
-          totalInstallments: Number(d.totalInstallments || d.TotalInstallments || 0) || null,
-          remainingInstallments: Number(d.remainingInstallments || d.RemainingInstallments || 0) || null,
-          note: d.note || d.Note || '',
-          paid: d.paid === true || d.paid === 'TRUE' || d.Paid === true || d.Paid === 'TRUE',
-          createdAt: d.createdAt || d.CreatedAt || '',
-          calendarEventId: d.calendarEventId || d.CalendarEventId || ''
+          type: d.type || 'personal',
+          creditor: d.creditor || '?',
+          amount: Number(d.amount) || 0,
+          currency: d.currency || '₺',
+          dueDate: d.dueDate ? d.dueDate.split('T')[0] : '',  // TARİH DÜZELTMESİ
+          dueTime: d.dueTime || '09:00',
+          recurring: d.recurring === true || d.recurring === 'TRUE',
+          totalInstallments: d.totalInstallments ? Number(d.totalInstallments) : null,
+          remainingInstallments: d.remainingInstallments ? Number(d.remainingInstallments) : null,
+          note: d.note || '',
+          paid: d.paid === true || d.paid === 'TRUE',
+          createdAt: d.createdAt || '',
+          calendarEventId: d.calendarEventId || ''
         }));
       
       saveLocal();
       updateTotal();
       renderTab();
       scheduleAllNotifs();
-      console.log('Yüklenen borçlar:', debts); // DEBUG
     } else {
-      console.error('API hatası:', res);
-      // localStorage'a düş
-      const local = loadLocal();
-      debts = local.filter(d=>!deleted.includes(String(d.id)));
-      updateTotal();
-      renderTab();
+      throw new Error('Invalid response');
     }
   } catch(e){
-    console.error('Bağlantı hatası:', e);
-    // localStorage'a düş
+    console.error('Connection error:', e);
+    // Yerel verileri göster
     const local = loadLocal();
     debts = local.filter(d=>!deleted.includes(String(d.id)));
     updateTotal();
     renderTab();
-    showToast('Bağlantı hatası, yerel veriler gösteriliyor', 'error');
+    document.getElementById('cfg-banner').classList.add('show');
+    document.getElementById('cfg-banner').innerHTML = '⚠️ ' + (lang === 'tr' ? 'Bağlantı hatası, ayarları kontrol edin' : 'Connection error, check settings');
   }
 }
 
