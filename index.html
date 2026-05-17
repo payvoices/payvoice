@@ -815,13 +815,14 @@ async function loadDebts(){
 }
 
 async function apiPost(body){
-  if(!SCRIPT_URL) return;
+  if(!SCRIPT_URL) return null;
   try{
-    const r=await fetch(SCRIPT_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
+    // GET ile gonderiyoruz - CORS sorunu olmaz
+    const params = new URLSearchParams({
+      action: body.action,
+      payload: JSON.stringify(body)
     });
+    const r = await fetch(SCRIPT_URL + '?' + params.toString());
     return await r.json();
   }catch(e){ showToast(t('t_sync'),'error'); return null; }
 }
