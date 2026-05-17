@@ -783,61 +783,59 @@ function updateConnStatus(){
 // ── LOCAL STORAGE ──
 function saveLocal(){ localStorage.setItem('pv-debts',JSON.stringify(debts)); }
 function loadLocal(){ try{const s=localStorage.getItem('pv-debts');return s?JSON.parse(s):[];}catch{return[];} }
-function isSampleData(arr){ return arr&&arr.length>0&&arr.every(d=>d.id==='s1'||d.id==='s2'); }
-
-// Silinen ID'leri tut - Sheets'ten gelse bile gösterme
 function getDeletedIds(){ try{return JSON.parse(localStorage.getItem('pv-deleted')||'[]');}catch{return[];} }
-function addDeletedId(id){ const ids=getDeletedIds(); if(!ids.includes(id)){ids.push(id);localStorage.setItem('pv-deleted',JSON.stringify(ids));} }
-function removeDeletedId(id){ localStorage.setItem('pv-deleted',JSON.stringify(getDeletedIds().filter(x=>x!==id))); }
+function addDeletedId(id){ const ids=getDeletedIds(); if(!ids.includes(String(id))){ids.push(String(id));localStorage.setItem('pv-deleted',JSON.stringify(ids));} }
+
+// PhoneTrack gibi: action body'de gönder, doGet doPost'u çağırıyor
+async function apiPost(body){
+  if(!SCRIPT_URL) return null;
+  try{
+    const r = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(body)
+    });
+    return await r.json();
+  }catch(e){
+    showToast(t('t_sync'),'error');
+    return null;
+  }
+}
 
 async function loadDebts(){
   const deleted = getDeletedIds();
 
-  // 1. Önce localStorage'dan göster (anlık)
+  // Önce localStorage göster
   const local = loadLocal();
-  if(local.length>0 && !isSampleData(local)){
-    debts = local.filter(d=>!deleted.includes(d.id));
+  if(local.length>0){
+    debts = local.filter(d=>!deleted.includes(String(d.id)));
     updateTotal(); renderTab();
   } else {
-    debts = []; updateTotal(); renderTab();
+    debts=[]; updateTotal(); renderTab();
   }
 
-  // 2. Sheets varsa arka planda çek
+  // Sheets'ten çek - PhoneTrack gibi action body'de
   if(!SCRIPT_URL) return;
   try{
-    const r = await fetch(SCRIPT_URL+'?action=getAll');
-    const remote = await r.json();
-    if(!Array.isArray(remote)) return;
-    // Silinen ID'leri filtrele
-    const filtered = remote.filter(d=>!deleted.includes(String(d.id)));
-    // Sadece Sheets'te daha fazla veri varsa güncelle
-    // Yoksa localStorage'ı koru (yazma gecikmesi olabilir)
-    if(filtered.length >= debts.length){
+    const r = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'getAll'})
+    });
+    const res = await r.json();
+    if(res.ok && Array.isArray(res.data)){
+      const filtered = res.data.filter(d=>!deleted.includes(String(d.id)));
       debts = filtered;
       saveLocal();
       updateTotal(); renderTab();
     }
-  }catch(e){ /* localStorage verisi kullanılıyor */ }
-}
-
-async function apiPost(body){
-  if(!SCRIPT_URL) return null;
-  try{
-    // no-cors ile POST — Apps Script alıyor, CORS hatası yok
-    await fetch(SCRIPT_URL, {
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify(body)
-    });
-    return {success:true};
-  }catch(e){ return null; }
+  }catch(e){ /* localStorage kullan */ }
 }
 
 async function addDebt(d){
   debts.push(d); saveLocal(); updateTotal(); renderTab();
-  await apiPost({action:'add',debt:d});
   scheduleNotif(d);
+  await apiPost({action:'add', debt:d});
 }
 
 function markPaid(id){
@@ -852,7 +850,7 @@ function markPaid(id){
       debts=debts.map(x=>x.id===id?{...x,paid:true}:x);
       saveLocal(); updateTotal(); renderTab();
       showToast(t('t_paid'),'ok');
-      await apiPost({action:'paid',id});
+      await apiPost({action:'paid', id:id});
     }
   });
 }
@@ -871,7 +869,7 @@ function deleteDebt(id){
       debts=debts.filter(x=>x.id!==id);
       saveLocal(); updateTotal(); renderTab();
       showToast(t('t_del'),'info');
-      await apiPost({action:'delete',id});
+      await apiPost({action:'delete', id:id});
     }
   });
 }
@@ -1239,7 +1237,7 @@ async function saveEdit(){
   saveLocal(); updateTotal(); renderTab();
   closeEdit();
   showToast(lang==='tr'?'Güncellendi!':'Updated!','ok');
-  await apiPost({action:'add',debt:debts.find(x=>x.id===id)});
+  await apiPost({action:'edit', debt:debts.find(x=>x.id===id)});
 }
 
 // ══════════════════════════════════════════
